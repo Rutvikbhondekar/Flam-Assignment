@@ -1,23 +1,5 @@
 #!/usr/bin/env python3
-"""
-queuectl.py
 
-Minimal production-grade CLI job queue:
-- SQLite persistence
-- Workers (parallel)
-- Exponential backoff retries
-- Dead Letter Queue (DLQ)
-- CLI: enqueue, worker start/stop, status, list, dlq, config
-
-Usage examples:
-  python queuectl.py enqueue '{"id":"job1","command":"echo hello", "max_retries":3}'
-  python queuectl.py worker start --count 2
-  python queuectl.py status
-  python queuectl.py list --state pending
-  python queuectl.py dlq list
-  python queuectl.py dlq retry job1
-  python queuectl.py config set backoff_base 3
-"""
 import os
 import sys
 import json
@@ -33,18 +15,17 @@ import threading
 
 import click
 
-# Configuration
+
 DATA_DIR = os.path.expanduser("~/.queuectl")
 DB_PATH = os.path.join(DATA_DIR, "queue.db")
 PIDFILE = os.path.join(DATA_DIR, "workers.pids")
 DEFAULT_BACKOFF_BASE = 2
 DEFAULT_MAX_RETRIES = 3
-WORKER_POLL_INTERVAL = 1  # seconds
+WORKER_POLL_INTERVAL = 1 
 
-# Ensure data dir
+
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# ---------- DB helpers ----------
 def get_conn():
     conn = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
     conn.row_factory = sqlite3.Row
@@ -105,7 +86,6 @@ def set_config(key, value):
     conn.commit()
     conn.close()
 
-# ---------- Job operations ----------
 def enqueue_job(job_json_str):
     try:
         job = json.loads(job_json_str)
@@ -172,7 +152,6 @@ def retry_from_dlq(job_id):
     conn.close()
     click.echo(f"Retried DLQ job {job_id}")
 
-# ---------- Worker logic ----------
 def claim_next_job(conn, worker_id):
     cur = conn.cursor()
     cur.execute("BEGIN IMMEDIATE")
@@ -265,7 +244,6 @@ def worker_loop(worker_id, stop_event):
     conn.close()
     click.echo(f"[worker {worker_id}] shutting down gracefully")
 
-# ---------- CLI ----------
 @click.group()
 def cli():
     init_db()
@@ -495,10 +473,9 @@ def _run_worker(worker_id):
     conn.close()
     click.echo(f"[detached-worker {worker_id}] exiting gracefully")
 
-# ---------- small helper to show README-like quickstart ----------
+
 @cli.command("demo", help="Quick demo: enqueue 3 jobs and start a worker (foreground 1).")
 def demo():
-    # Use OS-appropriate demo commands
     if os.name == "nt":
         enqueue_job(json.dumps({"id": "demo-1", "command": "echo hello world", "max_retries": 2}))
         enqueue_job(json.dumps({"id": "demo-2", "command": "cmd /c \"exit 1\"", "max_retries": 2}))
@@ -513,3 +490,4 @@ def demo():
 
 if __name__ == "__main__":
     cli()
+
